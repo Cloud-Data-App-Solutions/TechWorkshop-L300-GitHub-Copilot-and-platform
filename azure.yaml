@@ -3,7 +3,7 @@
 name: zavastore
 metadata:
   template: zavastore-aspnet-container
-
+  
 services:
   web:
     project: ./src
