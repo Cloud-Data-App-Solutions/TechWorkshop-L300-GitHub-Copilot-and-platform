@@ -32,8 +32,11 @@ namespace ZavaStorefront.Controllers
             _logger.LogInformation("Processing chat message: {Message}", request.Message);
 
             var response = await _chatService.SendMessageAsync(request.Message);
+            
+            // Check if response is an error message
+            bool isError = response.StartsWith("Error:", StringComparison.OrdinalIgnoreCase);
 
-            return Json(new { success = true, message = response });
+            return Json(new { success = !isError, message = response });
         }
     }
 

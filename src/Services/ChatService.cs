@@ -49,12 +49,15 @@ namespace ZavaStorefront.Services
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-
                 _logger.LogInformation("Sending message to Foundry AI endpoint: {EndpointUrl}", endpointUrl);
 
-                var response = await _httpClient.PostAsync(endpointUrl, content);
+                var request = new HttpRequestMessage(HttpMethod.Post, endpointUrl)
+                {
+                    Content = content
+                };
+                request.Headers.Add("Authorization", $"Bearer {apiKey}");
+
+                var response = await _httpClient.SendAsync(request);
 
                 if (!response.IsSuccessStatusCode)
                 {

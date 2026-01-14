@@ -19,9 +19,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<ProductService>();
 builder.Services.AddScoped<CartService>();
 
-// Register ChatService with HttpClient
+// Register ChatService with HttpClient (automatically registered as scoped)
 builder.Services.AddHttpClient<ChatService>();
-builder.Services.AddScoped<ChatService>();
 
 var app = builder.Build();
 
