@@ -1,0 +1,173 @@
+@{
+    ViewData["Title"] = "Chat";
+}
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="mb-4">AI Chat Assistant</h2>
+        
+        <div class="card">
+            <div class="card-body">
+                <div id="chat-container" class="mb-3" style="height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 1rem; background-color: #f8f9fa;">
+                    <div class="text-muted text-center mt-5">
+                        <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                        <p class="mt-3">Start a conversation with our AI assistant</p>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" id="message-input" class="form-control" placeholder="Type your message here..." aria-label="Message input">
+                    <button class="btn btn-primary" type="button" id="send-button">
+                        <i class="bi bi-send"></i> Send
+                    </button>
+                </div>
+                
+                <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            const chatContainer = $('#chat-container');
+            const messageInput = $('#message-input');
+            const sendButton = $('#send-button');
+            const errorMessage = $('#error-message');
+            
+            // Initialize conversation history from sessionStorage
+            let conversationHistory = [];
+            const savedHistory = sessionStorage.getItem('chatHistory');
+            if (savedHistory) {
+                conversationHistory = JSON.parse(savedHistory);
+                displayHistory();
+            }
+            
+            function displayHistory() {
+                chatContainer.empty();
+                conversationHistory.forEach(function(msg) {
+                    appendMessage(msg.text, msg.isUser);
+                });
+            }
+            
+            function appendMessage(text, isUser) {
+                const messageDiv = $('<div></div>').addClass('mb-3');
+                
+                const messageContent = $('<div></div>')
+                    .addClass('p-3 rounded')
+                    .css({
+                        'max-width': '80%',
+                        'word-wrap': 'break-word'
+                    });
+                
+                if (isUser) {
+                    messageDiv.addClass('text-end');
+                    messageContent.addClass('bg-primary text-white')
+                        .css('margin-left', 'auto');
+                } else {
+                    messageDiv.addClass('text-start');
+                    messageContent.addClass('bg-white border')
+                        .css('margin-right', 'auto');
+                }
+                
+                messageContent.text(text);
+                messageDiv.append(messageContent);
+                chatContainer.append(messageDiv);
+                
+                // Scroll to bottom
+                chatContainer.scrollTop(chatContainer[0].scrollHeight);
+            }
+            
+            function saveHistory() {
+                sessionStorage.setItem('chatHistory', JSON.stringify(conversationHistory));
+            }
+            
+            function sendMessage() {
+                const message = messageInput.val().trim();
+                
+                if (!message) {
+                    return;
+                }
+                
+                // Disable input while processing
+                messageInput.prop('disabled', true);
+                sendButton.prop('disabled', true);
+                errorMessage.hide();
+                
+                // Add user message to chat
+                appendMessage(message, true);
+                conversationHistory.push({ text: message, isUser: true });
+                saveHistory();
+                
+                // Clear input
+                messageInput.val('');
+                
+                // Show loading indicator
+                const loadingDiv = $('<div></div>')
+                    .addClass('mb-3 text-start')
+                    .attr('id', 'loading-indicator');
+                const loadingContent = $('<div></div>')
+                    .addClass('p-3 rounded bg-white border')
+                    .css({
+                        'max-width': '80%',
+                        'margin-right': 'auto'
+                    })
+                    .html('<span class="spinner-border spinner-border-sm me-2"></span>AI is thinking...');
+                loadingDiv.append(loadingContent);
+                chatContainer.append(loadingDiv);
+                chatContainer.scrollTop(chatContainer[0].scrollHeight);
+                
+                // Send message to server
+                $.ajax({
+                    url: '@Url.Action("SendMessage", "Chat")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ message: message }),
+                    success: function(response) {
+                        // Remove loading indicator
+                        $('#loading-indicator').remove();
+                        
+                        if (response.success) {
+                            // Add AI response to chat
+                            appendMessage(response.message, false);
+                            conversationHistory.push({ text: response.message, isUser: false });
+                            saveHistory();
+                        } else {
+                            errorMessage.text(response.message || 'Failed to get response').show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // Remove loading indicator
+                        $('#loading-indicator').remove();
+                        
+                        let errorText = 'Failed to send message. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorText = xhr.responseJSON.message;
+                        }
+                        errorMessage.text(errorText).show();
+                    },
+                    complete: function() {
+                        // Re-enable input
+                        messageInput.prop('disabled', false);
+                        sendButton.prop('disabled', false);
+                        messageInput.focus();
+                    }
+                });
+            }
+            
+            // Send message on button click
+            sendButton.on('click', sendMessage);
+            
+            // Send message on Enter key
+            messageInput.on('keypress', function(e) {
+                if (e.which === 13) {
+                    sendMessage();
+                }
+            });
+            
+            // Focus input on page load
+            messageInput.focus();
+        });
+    </script>
+}
